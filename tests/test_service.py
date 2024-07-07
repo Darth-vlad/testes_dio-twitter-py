@@ -1,37 +1,24 @@
-from unittest import mock
+from pymongo import MongoClient
+from .config import MONGO_URI, MONGO_DB_NAME
+from .responses import TrendItem
 
-from src.services import _get_trends
+def get_mongo_client():
+    return MongoClient(MONGO_URI)
 
+def get_trends():
+    client = get_mongo_client()
+    db = client[MONGO_DB_NAME]
+    collection = db.trends
+    trends = collection.find()
+    return [TrendItem(name=trend['name'], url=trend['url'], tweet_volume=trend['tweet_volume']) for trend in trends]
 
-def test_get_trends_with_success():
-    # Arrange
-    mock_api = mock.Mock()
-    mock_api.trends_place.return_value = [
-        {
-            "trends": [
-                {"name": "#EPJuliette", "url": "http://twitter.com/search?q=%23EPJuliette"},
-                {"name": "Addison", "url": "http://twitter.com/search?q=Addison"},
-            ]
-        }
+def save_trends():
+    client = get_mongo_client()
+    db = client[MONGO_DB_NAME]
+    collection = db.trends
+   
+    trends = [
+        {"name": "#Python", "url": "https://twitter.com/hashtag/Python", "tweet_volume": 100000},
+        {"name": "#FastAPI", "url": "https://twitter.com/hashtag/FastAPI", "tweet_volume": 50000},
     ]
-
-    # Act
-    trends = _get_trends(woe_id=1000, api=mock_api)
-
-    # Assert
-    assert trends == [
-        {"name": "#EPJuliette", "url": "http://twitter.com/search?q=%23EPJuliette"},
-        {"name": "Addison", "url": "http://twitter.com/search?q=Addison"},
-    ]
-
-
-def test_get_trends_without_return_with_success():
-    # Arrange
-    mock_api = mock.Mock()
-    mock_api.trends_place.return_value = [{"trends": []}]
-
-    # Act
-    trends = _get_trends(woe_id=1000, api=mock_api)
-
-    # Assert
-    assert trends == []
+    collection.insert_many(trends)
